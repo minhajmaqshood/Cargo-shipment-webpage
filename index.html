@@ -1,0 +1,261 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shipment Manager</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen">
+
+<!-- LOGIN PAGE -->
+<div id="loginPage" class="flex flex-col items-center justify-center min-h-screen p-4">
+  <div class="bg-white shadow-xl rounded-lg p-8 w-full max-w-sm">
+    <h1 class="text-3xl font-bold mb-4 text-center text-indigo-700">🔑 Login</h1>
+    <input id="username" type="text" placeholder="Username"
+      class="w-full mb-3 p-3 border rounded-md focus:ring-2 focus:ring-indigo-400" />
+    <input id="password" type="password" placeholder="Password"
+      class="w-full mb-3 p-3 border rounded-md focus:ring-2 focus:ring-indigo-400" />
+    <button onclick="login()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-md font-semibold text-lg transition">Login</button>
+    <p id="errorMsg" class="text-red-500 text-sm mt-3 text-center"></p>
+  </div>
+</div>
+
+<!-- DASHBOARD PAGE -->
+<div id="dashboardPage" class="hidden p-6">
+  <div class="flex justify-between items-center mb-6">
+    <!-- FILTER BUTTON at top-left -->
+    <button onclick="location.href='filter.html'"
+      class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-2 rounded-md mr-4">
+      🔍 Box count import
+    </button>
+    
+    <button onclick="location.href='filter_01.html'"
+      class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-2 rounded-md mr-4">
+      🔍 Total CBM
+    </button>
+    
+    <h1 class="text-3xl font-bold text-indigo-700 flex-grow">📦 Shipment Dashboard</h1>
+    
+    <div class="space-x-2">
+      <button onclick="showInputPage()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">➕ Add Shipment</button>
+      <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md">🚪 Logout</button>
+    </div>
+  </div>
+  <div id="dashboardContainer" class="space-y-6"></div>
+  <div class="mt-6">
+    <button onclick="exportExcel()" class="bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-lg font-semibold">📥 Export All Shipments</button>
+  </div>
+</div>
+
+<!-- INPUT PAGE -->
+<div id="inputPage" class="hidden p-6">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-2xl font-bold text-indigo-700">📝 Add Shipment Details</h2>
+    <button onclick="showDashboard()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md">📊 Dashboard</button>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <input id="shipmentName" class="p-3 border rounded-md" placeholder="Shipment Name" />
+    <input id="shippingMark" class="p-3 border rounded-md" placeholder="Shipping Mark" />
+  </div>
+  <input id="productName" class="p-3 border rounded-md mb-4 w-full" placeholder="Product Name" />
+  <div class="grid grid-cols-5 gap-3 mb-4">
+    <input id="length" class="p-2 border rounded" placeholder="Length" />
+    <input id="width" class="p-2 border rounded" placeholder="Width" />
+    <input id="height" class="p-2 border rounded" placeholder="Height" />
+    <input id="weight" class="p-2 border rounded" placeholder="Weight" />
+    <input id="boxCount" class="p-2 border rounded" placeholder="Box Count" />
+  </div>
+  <button onclick="addEntry()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md mb-6">➕ Add Entry</button>
+
+  <h3 class="text-xl font-bold mb-2">Entries from Database</h3>
+  <table class="w-full border text-sm">
+    <thead class="bg-blue-100">
+      <tr>
+        <th class="border p-2">Shipment</th>
+        <th class="border p-2">Mark</th>
+        <th class="border p-2">Product</th>
+        <th class="border p-2">L</th>
+        <th class="border p-2">W</th>
+        <th class="border p-2">H</th>
+        <th class="border p-2">Weight</th>
+        <th class="border p-2">Boxes</th>
+      </tr>
+    </thead>
+    <tbody id="inputTableBody"></tbody>
+  </table>
+</div>
+
+<script>
+// 👇 CHANGE THIS to your PC IPv4 address
+// Use http://localhost/shipment for PC access
+// and http://<YOUR_PC_IP>/shipment for mobile access
+const API_BASE = "http://127.0.0.1/myweb/";
+
+let shipmentData = [];
+
+// Navigation
+function hideAll() {
+  ['loginPage', 'dashboardPage', 'inputPage'].forEach(id => document.getElementById(id).classList.add('hidden'));
+}
+function showLogin() {
+  hideAll();
+  document.getElementById('loginPage').classList.remove('hidden');
+}
+function showDashboard() {
+  hideAll();
+  document.getElementById('dashboardPage').classList.remove('hidden');
+  loadData();
+}
+function showInputPage() {
+  hideAll();
+  document.getElementById('inputPage').classList.remove('hidden');
+  renderInputTable();
+}
+
+// Login & Logout
+function login() {
+  const u = document.getElementById('username').value.trim();
+  const p = document.getElementById('password').value.trim();
+  if (u === 'admin' && p === '1234') {
+    localStorage.setItem('isLoggedIn', 'true');
+    showDashboard();
+  } else {
+    document.getElementById('errorMsg').innerText = '❌ Invalid username or password';
+  }
+}
+function logout() {
+  localStorage.removeItem('isLoggedIn');
+  showLogin();
+}
+
+// Fetch data
+async function loadData() {
+  const res = await fetch(`${API_BASE}/get_shipments.php`);
+  shipmentData = await res.json();
+  renderDashboard();
+  renderInputTable();
+}
+
+// Add entry
+async function addEntry() {
+  const shipment = document.getElementById('shipmentName').value.trim();
+  const mark = document.getElementById('shippingMark').value.trim();
+  const product = document.getElementById('productName').value.trim();
+  const length = document.getElementById('length').value.trim();
+  const width = document.getElementById('width').value.trim();
+  const height = document.getElementById('height').value.trim();
+  const weight = document.getElementById('weight').value.trim();
+  const box = parseInt(document.getElementById('boxCount').value.trim()) || 0;
+
+  if (!shipment || !mark || !product) {
+    alert('Fill Shipment, Mark and Product');
+    return;
+  }
+
+  const res = await fetch(`${API_BASE}/save_shipment.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ shipment, mark, product, length, width, height, weight, box })
+  });
+  const data = await res.json();
+  if (data.success) {
+    await loadData();
+  } else {
+    alert('Error: ' + (data.error || 'unknown'));
+  }
+
+  ['productName', 'length', 'width', 'height', 'weight', 'boxCount'].forEach(id => document.getElementById(id).value = '');
+}
+
+// Render Input Table
+function renderInputTable() {
+  const tbody = document.getElementById('inputTableBody');
+  tbody.innerHTML = '';
+  shipmentData.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="border p-2">${item.shipment_name}</td>
+      <td class="border p-2">${item.shipping_mark}</td>
+      <td class="border p-2">${item.product_name}</td>
+      <td class="border p-2">${item.length || ''}</td>
+      <td class="border p-2">${item.width || ''}</td>
+      <td class="border p-2">${item.height || ''}</td>
+      <td class="border p-2">${item.weight || ''}</td>
+      <td class="border p-2">${item.box_count || ''}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// Render Dashboard
+function renderDashboard() {
+  const container = document.getElementById('dashboardContainer');
+  container.innerHTML = '';
+  const grouped = {};
+  shipmentData.forEach(item => {
+    if (!grouped[item.shipment_name]) grouped[item.shipment_name] = {};
+    if (!grouped[item.shipment_name][item.shipping_mark]) grouped[item.shipment_name][item.shipping_mark] = [];
+    grouped[item.shipment_name][item.shipping_mark].push(item);
+  });
+  for (const ship in grouped) {
+    let totalBoxes = 0;
+    const div = document.createElement('div');
+    div.className = 'bg-white p-4 rounded-lg shadow';
+    div.innerHTML = `<h2 class="text-xl font-bold mb-2">🚚 ${ship}</h2>`;
+    for (const mark in grouped[ship]) {
+      const rows = grouped[ship][mark];
+      const markBoxes = rows.reduce((a, c) => a + Number(c.box_count), 0);
+      totalBoxes += markBoxes;
+      let html = `<h3 class="font-semibold text-indigo-600">📌 Mark: ${mark} (Boxes: ${markBoxes})</h3>
+        <table class="w-full border mb-2 text-sm">
+        <thead class="bg-gray-100"><tr>
+        <th class="border p-1">Product</th><th class="border p-1">L</th><th class="border p-1">W</th><th class="border p-1">H</th><th class="border p-1">Weight</th><th class="border p-1">Box</th>
+        </tr></thead><tbody>`;
+      rows.forEach(r => {
+        html += `<tr>
+        <td class="border p-1">${r.product_name}</td>
+        <td class="border p-1">${r.length || ''}</td>
+        <td class="border p-1">${r.width || ''}</td>
+        <td class="border p-1">${r.height || ''}</td>
+        <td class="border p-1">${r.weight || ''}</td>
+        <td class="border p-1">${r.box_count || ''}</td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      div.innerHTML += html;
+    }
+    div.innerHTML += `<p class="mt-2 font-bold">📦 Total Boxes: ${totalBoxes}</p>`;
+    container.appendChild(div);
+  }
+}
+
+// Export all shipments to Excel
+function exportExcel() {
+  const grouped = {};
+  shipmentData.forEach(item => {
+    if (!grouped[item.shipment_name]) grouped[item.shipment_name] = {};
+    if (!grouped[item.shipment_name][item.shipping_mark]) grouped[item.shipment_name][item.shipping_mark] = [];
+    grouped[item.shipment_name][item.shipping_mark].push(item);
+  });
+  const wb = XLSX.utils.book_new();
+  for (const ship in grouped) {
+    for (const mark in grouped[ship]) {
+      const data = [['Product', 'Length', 'Width', 'Height', 'Weight', 'Box Count']];
+      grouped[ship][mark].forEach(p => data.push([p.product_name, p.length, p.width, p.height, p.weight, p.box_count]));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), `${ship.substring(0, 15)}-${mark.substring(0, 15)}`);
+    }
+  }
+  XLSX.writeFile(wb, 'Shipments.xlsx');
+}
+
+// Init
+if (localStorage.getItem('isLoggedIn') === 'true') {
+  showDashboard();
+} else {
+  showLogin();
+}
+</script>
+
+</body>
+</html>
