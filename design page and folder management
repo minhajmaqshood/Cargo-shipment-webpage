@@ -1,0 +1,9 @@
+shipment-system/
+├── index.html         ← Login (future)
+├── dashboard.php      ← Dashboard
+├── add-shipment.php   ← Add shipment form
+├── insert.php         ← Backend processor
+├── db.php             ← DB connection
+├── uploads/           ← Folder to hold docs
+├── styles.css         ← Optional (you can use Tailwind via CDN)
+└── sql/schema.sql     ← MySQL DB schema
