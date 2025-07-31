@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Shipment Viewer</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background: #f8f8f8;
+  }
+  h2 {
+    text-align: center;
+  }
+  .filter-box {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .filter-box input {
+    width: 40%;
+    max-width: 250px;
+    padding: 8px;
+    font-size: 16px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    margin: 5px;
+  }
+  table {
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    border-collapse: collapse;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  th,
+  td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+  }
+  th {
+    background: #333;
+    color: #fff;
+  }
+  tr:nth-child(even) {
+    background: #f9f9f9;
+  }
+  .total-box {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 18px;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<h2>Shipment Viewer</h2>
+
+<div class="filter-box">
+  <input
+    type="text"
+    id="filterShipment"
+    placeholder="Filter by Shipment Name..."
+    oninput="applyFilter()"
+  />
+  <input
+    type="text"
+    id="filterMark"
+    placeholder="Filter by Shipping Mark..."
+    oninput="applyFilter()"
+  />
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Shipment</th>
+      <th>Mark</th>
+      <th>Product</th>
+      <th>L</th>
+      <th>W</th>
+      <th>H</th>
+      <th>Weight</th>
+      <th>Box Count</th>
+    </tr>
+  </thead>
+  <tbody id="tableBody">
+    <!-- Data rows go here -->
+  </tbody>
+</table>
+
+<div class="total-box" id="totalBox"></div>
+
+<script>
+  let allData = [];
+  let filteredData = [];
+
+  fetch('get_shipments.php')
+    .then((res) => res.json())
+    .then((json) => {
+      allData = json;
+      filteredData = allData;
+      renderTable();
+    })
+    .catch((err) => {
+      console.error('Failed to fetch shipment data:', err);
+      document.getElementById('tableBody').innerHTML =
+        '<tr><td colspan="8">Error loading data</td></tr>';
+    });
+
+  function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    const totalBoxElement = document.getElementById('totalBox');
+    tbody.innerHTML = '';
+
+    if (filteredData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8">No matching records</td></tr>';
+      totalBoxElement.textContent = '';
+      return;
+    }
+
+    let totalBoxes = 0;
+
+    filteredData.forEach((item) => {
+      const boxCountNum = parseInt(item.box_count);
+      totalBoxes += isNaN(boxCountNum) ? 0 : boxCountNum;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${item.shipment_name ?? ''}</td>
+        <td>${item.shipping_mark ?? ''}</td>
+        <td>${item.product_name ?? ''}</td>
+        <td>${item.length ?? ''}</td>
+        <td>${item.width ?? ''}</td>
+        <td>${item.height ?? ''}</td>
+        <td>${item.weight ?? ''}</td>
+        <td>${item.box_count ?? ''}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    totalBoxElement.textContent = `Total Box Count: ${totalBoxes}`;
+  }
+
+  function applyFilter() {
+    const shipmentKeyword = document
+      .getElementById('filterShipment')
+      .value.toLowerCase();
+    const markKeyword = document
+      .getElementById('filterMark')
+      .value.toLowerCase();
+
+    filteredData = allData.filter((item) => {
+      const matchShipment =
+        shipmentKeyword === '' ||
+        (item.shipment_name &&
+          item.shipment_name.toLowerCase().includes(shipmentKeyword));
+      const matchMark =
+        markKeyword === '' ||
+        (item.shipping_mark &&
+          item.shipping_mark.toLowerCase().includes(markKeyword));
+      return matchShipment && matchMark;
+    });
+
+    renderTable();
+  }
+</script>
+
+</body>
+</html>
