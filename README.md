@@ -162,3 +162,81 @@ Here’s the **MySQL database schema diagram** for your Cargo Shipment System:
 * **products** → linked to shipments (with dimensions, weight, CBM, boxes).
 * **documents** → linked to shipments (invoice, packing list, etc.).
 * **status\_log** → tracks status updates with timestamp & user ID.
+Got it ✅ — here’s how we can structure the **Admin Dashboard with role management** for your Cargo Shipment System:
+
+---
+
+## 🔑 Admin Dashboard Features
+
+Admin has **full access** to:
+
+1. **Manage Shipments & Products** (create, edit, delete).
+2. **Manage Ground Staff** (add staff accounts, assign role = `staff`).
+3. **Manage Clients** (create client logins with read-only access).
+4. **Permissions Control** (decide what staff can edit, what clients can only view).
+5. **Analytics & Reports** (view shipment totals, CBM, weight, etc.).
+
+---
+
+## 👷 Staff Dashboard Features (Ground-level employees)
+
+* Can **log in**.
+* Can **add new shipments/products**.
+* Can **mark product OUT** (logs date & time).
+* **No delete or edit of shipments** (only limited fields).
+
+---
+
+## 👨‍💼 Client Dashboard Features
+
+* **Log in** with their own credentials.
+* **View their shipments** (linked via `client_id` in `shipments` table).
+* Can **download documents** (Invoice, Packing List, etc.).
+* **No edit/delete permissions**.
+
+---
+
+## 📊 Database Update (New Tables/Columns)
+
+To support this, we add:
+
+```sql
+-- Users Table
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('admin','staff','client') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Shipments linked to client
+ALTER TABLE shipments ADD COLUMN client_id INT NULL,
+    ADD CONSTRAINT fk_client FOREIGN KEY (client_id) REFERENCES users(user_id);
+```
+
+---
+
+## 📌 Flow of Access
+
+* **Admin** → Manages everything.
+* **Staff** → Admin assigns login → can access shipment entry & product out log.
+* **Client** → Admin assigns login → can only view their shipments.
+
+---
+
+## 🖥️ Admin Dashboard (Sample UI Sections)
+
+* **User Management**:
+
+  * Add New User (role = staff or client).
+  * Assign permissions.
+  * Reset passwords.
+* **Shipment Management**:
+
+  * Create/Edit/Delete shipments.
+* **Analytics**:
+
+  * Total Shipments, Status Report, Document Summary.
+
+---
